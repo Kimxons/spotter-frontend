@@ -3,9 +3,6 @@ import type { TripDetails, RouteResult } from "./types"
 
 const API_BASE_URL = "http://localhost:8000/api"
 
-/**
- * Custom API error class for better error handling
- */
 export class ApiError extends Error {
   status: number
   data?: any
@@ -18,7 +15,6 @@ export class ApiError extends Error {
   }
 }
 
-// Storing auth token for API requests
 let authToken: string | null = null
 
 /**
@@ -33,7 +29,7 @@ async function fetchFromAPI<T>(endpoint: string, options: RequestInit = {}): Pro
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
-    ...(options.headers as Record<string, string>),
+    ...(options.headers as Record<string, string> || {}),
   }
 
   if (authToken) {
@@ -60,16 +56,11 @@ async function fetchFromAPI<T>(endpoint: string, options: RequestInit = {}): Pro
     console.log("Raw response text:", rawText)
 
     if (!response.ok) {
-      interface ErrorData {
-        detail?: { [key: string]: string[] | string } | string;
-        message?: string;
-        error?: string;
-      }
-      let errorData: ErrorData = {}
+      let errorData: { detail?: any; message?: string; error?: string } = {}
 
       if (rawText) {
         try {
-          errorData = JSON.parse(rawText) as ErrorData
+          errorData = JSON.parse(rawText)
           console.log("Parsed error data:", errorData)
         } catch (e) {
           console.error("Failed to parse error response as JSON:", e)
@@ -92,16 +83,29 @@ async function fetchFromAPI<T>(endpoint: string, options: RequestInit = {}): Pro
 
       let errorMessage = ""
 
-      if (errorData.detail && typeof errorData.detail === "object") {
-        errorMessage = Object.entries(errorData.detail)
-          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`)
-          .join("; ")
-      } else if (errorData.detail) {
-        errorMessage = errorData.detail
-      } else if (errorData.message) {
-        errorMessage = errorData.message
-      } else if (errorData.error) {
-        errorMessage = errorData.error
+      if (typeof errorData === "object" && errorData !== null) {
+        if (errorData.detail && typeof errorData.detail === "object") {
+          errorMessage = Object.entries(errorData.detail)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`)
+            .join("; ")
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail
+        } else if (errorData.message) {
+          errorMessage = errorData.message
+        } else if (errorData.error) {
+          errorMessage = errorData.error
+        } else {
+          const fieldErrors = Object.entries(errorData)
+            .filter(([key, value]) => typeof value === "string" || Array.isArray(value))
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`)
+            .join("; ")
+
+          if (fieldErrors) {
+            errorMessage = fieldErrors
+          } else {
+            errorMessage = `API error: ${response.status} ${response.statusText}`
+          }
+        }
       } else {
         errorMessage = `API error: ${response.status} ${response.statusText}`
       }
@@ -114,7 +118,7 @@ async function fetchFromAPI<T>(endpoint: string, options: RequestInit = {}): Pro
       data = rawText ? JSON.parse(rawText) : await response.json()
     } catch (e) {
       console.error("Failed to parse response as JSON:", e)
-      const errorMessage = e instanceof Error ? e.message : 'Unknown JSON parsing error'
+      const errorMessage = e instanceof Error ? e.message : 'Unknown parsing error'
       throw new ApiError(`Failed to parse response as JSON: ${errorMessage}`, response.status, { rawResponse: rawText })
     }
 
@@ -148,7 +152,6 @@ export const api = {
     authToken = null
   },
 
-  // Authentication
   login: async (username: string, password: string): Promise<{ token: string; user: User }> => {
     return fetchFromAPI<{ token: string; user: User }>("/users/auth/token/", {
       method: "POST",
@@ -170,11 +173,9 @@ export const api = {
     return fetchFromAPI<User>("/users/me/")
   },
 
-  // Calculate route based on trip details
   calculateRoute: async (tripDetails: TripDetails): Promise<RouteResult> => {
     console.log("Sending trip details to API:", tripDetails)
 
-    // Format the trip details for the API
     const formattedTripDetails = {
       current_location: tripDetails.currentLocation,
       pickup_location: tripDetails.pickupLocation,
@@ -192,9 +193,50 @@ export const api = {
 
   // Save a route
   saveRoute: async (routeData: RouteResult): Promise<RouteResult> => {
+    // Convert camelCase to snake_case for the backend
+    const formattedRouteData = {
+      start_location: routeData.startLocation,
+      end_location: routeData.endLocation,
+      total_distance: routeData.totalDistance,
+      total_duration: routeData.totalDuration,
+      stops: routeData.stops.map((stop) => ({
+        type: stop.type,
+        location: stop.location,
+        description: stop.description,
+        arrival_time: stop.arrivalTime,
+        departure_time: stop.departureTime,
+        duration: stop.duration,
+        mileage: stop.mileage,
+        coordinates: stop.coordinates,
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+      })),
+      logs: routeData.logs.map((log) => ({
+        date: log.date,
+        start_location: log.startLocation,
+        end_location: log.endLocation,
+        total_miles: log.totalMiles,
+        shipping_documents: log.shippingDocuments,
+        remarks: log.remarks,
+        activities: log.activities.map((activity) => ({
+          type: activity.type,
+          start_time: activity.startTime,
+          end_time: activity.endTime,
+          location: activity.location,
+          description: activity.description,
+        })),
+        total_hours: {
+          off_duty: log.totalHours.offDuty,
+          sleeper_berth: log.totalHours.sleeperBerth,
+          driving: log.totalHours.driving,
+          on_duty_not_driving: log.totalHours.onDutyNotDriving,
+        },
+      })),
+    }
+
     return fetchFromAPI<RouteResult>("/routes/", {
       method: "POST",
-      body: JSON.stringify(routeData),
+      body: JSON.stringify(formattedRouteData),
     })
   },
 
@@ -223,7 +265,6 @@ export function getApiErrorMessage(error: unknown): string {
   console.error("API Error details:", error)
 
   if (error instanceof ApiError) {
-    // Handle specific error codes
     if (error.status === 404) {
       return "The requested resource was not found. Please try again."
     }
@@ -234,7 +275,6 @@ export function getApiErrorMessage(error: unknown): string {
 
     if (error.status === 422 || error.status === 400) {
       if (error.data && typeof error.data === "object") {
-        // Try to format validation errors nicely
         const validationErrors = Object.entries(error.data)
           .filter(([key, value]) => key !== "error" && key !== "detail" && key !== "message")
           .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
@@ -256,7 +296,6 @@ export function getApiErrorMessage(error: unknown): string {
       return `Network error: ${error.message}. Make sure the Django server is running.`
     }
 
-    // Return the error message if available
     return error.message || "An error occurred while communicating with the server."
   }
 

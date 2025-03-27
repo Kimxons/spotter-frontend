@@ -1,4 +1,3 @@
-// Trip input details
 export interface TripDetails {
   currentLocation: string
   pickupLocation: string
@@ -6,7 +5,6 @@ export interface TripDetails {
   cycleHoursUsed: number
 }
 
-// Route calculation result
 export interface RouteResult {
   id?: string
   startLocation: string
@@ -16,9 +14,12 @@ export interface RouteResult {
   stops: RouteStop[]
   logs: LogDay[]
   createdAt?: string
+  routeGeometry?: {
+    type: string
+    coordinates: [number, number][]
+  }
 }
 
-// Individual stop on the route
 export interface RouteStop {
   type: "start" | "pickup" | "dropoff" | "rest" | "fuel" | "overnight"
   location: string
@@ -27,9 +28,11 @@ export interface RouteStop {
   departureTime: string
   duration?: string
   mileage?: number
+  coordinates?: [number, number]
+  latitude?: number
+  longitude?: number
 }
 
-// Daily log sheet
 export interface LogDay {
   date: string
   startLocation: string
@@ -46,7 +49,6 @@ export interface LogDay {
   }
 }
 
-// Activity entry in the log
 export interface LogActivity {
   type: "offDuty" | "sleeperBerth" | "driving" | "onDutyNotDriving"
   startTime: string

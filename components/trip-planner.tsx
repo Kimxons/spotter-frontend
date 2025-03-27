@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import TripForm from "@/components/trip-form"
-import RouteMap from "@/components/route-map"
 import LogSheet from "@/components/log-sheet"
 import TripSummary from "@/components/trip-summary"
 import { calculateRoute } from "@/lib/route-calculator"
@@ -32,6 +31,7 @@ import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import UserMenu from "@/components/auth/user-menu"
 import { useAuth } from "@/lib/ auth-context"
+import RouteMap from "./maps/route-map"
 
 export default function TripPlanner() {
   const [activeTab, setActiveTab] = useState("input")
@@ -45,11 +45,10 @@ export default function TripPlanner() {
   const { toast } = useToast()
   const { isAuthenticated } = useAuth()
 
-  // Simulate loading progress with realistic stages
   const startProgressSimulation = useCallback(() => {
     let progress = 0
     const stages = [
-      "Connecting to server...",
+      "Connecting ...",
       "Validating inputs...",
       "Calculating optimal route...",
       "Analyzing HOS compliance...",
@@ -62,7 +61,6 @@ export default function TripPlanner() {
     const interval = setInterval(() => {
       progress += Math.random() * 8
 
-      // Update loading stage based on progress
       const stageIndex = Math.min(Math.floor(progress / (100 / stages.length)), stages.length - 1)
       setLoadingStage(stages[stageIndex])
 
@@ -77,7 +75,6 @@ export default function TripPlanner() {
     return interval
   }, [])
 
-  // Reset error when changing tabs
   useEffect(() => {
     setError(null)
   }, [activeTab])
@@ -87,11 +84,9 @@ export default function TripPlanner() {
     setError(null)
     setTripDetails(details)
 
-    // Start progress simulation
     const progressInterval = startProgressSimulation()
 
     try {
-      // Call the Django backend API
       const result = await calculateRoute(details)
       setRouteResult(result)
       setActiveTab("map")
@@ -133,6 +128,8 @@ export default function TripPlanner() {
 
     setIsSaving(true)
     try {
+      console.log("Saving route data:", routeResult)
+
       await api.saveRoute(routeResult)
       toast({
         title: "Route saved successfully",
@@ -140,6 +137,7 @@ export default function TripPlanner() {
         variant: "default",
       })
     } catch (err) {
+      console.error("Error details when saving route:", err)
       const errorMessage = getApiErrorMessage(err)
       toast({
         title: "Error saving route",
@@ -162,7 +160,7 @@ export default function TripPlanner() {
       title: `Exporting as ${format.toUpperCase()}`,
       description: "Your file will be downloaded shortly.",
     })
-    // In a real implementation, this would call an API endpoint to generate and download the file
+    // TODO: Make a call an API endpoint to generate and download the file
   }
 
   const getTabIcon = (tab: string) => {

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Loader2, UserPlus, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/ auth-context"
 
 const registerSchema = z
@@ -31,6 +32,7 @@ export default function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { login } = useAuth()
+  const router = useRouter()
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -55,6 +57,9 @@ export default function RegisterForm() {
 
       // Auto-login after successful registration
       login(response.token, response.user)
+
+      // Redirect to home page after successful registration
+      router.push("/")
     } catch (err: any) {
       setError(err.message || "Failed to register. Please try again.")
     } finally {

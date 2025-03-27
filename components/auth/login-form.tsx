@@ -12,6 +12,7 @@ import { Loader2, LogIn, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/ auth-context"
+import { useRouter } from "next/navigation"
 
 const loginSchema = z.object({
   username: z.string().min(3, { message: "Username must be at least 3 characters" }),
@@ -24,6 +25,7 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { login } = useAuth()
+  const router = useRouter()
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -40,6 +42,9 @@ export default function LoginForm() {
     try {
       const response = await api.login(values.username, values.password)
       login(response.token, response.user)
+
+      // Redirect to home page after successful login
+      router.push("/")
     } catch (err: any) {
       setError(err.message || "Failed to login. Please check your credentials.")
     } finally {
