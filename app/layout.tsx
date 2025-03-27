@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Inter } from "next/font/google"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { Analytics } from "@/components/analytics"
 import { AuthProvider } from "@/lib/ auth-context"
 
 const inter = Inter({
@@ -31,7 +30,6 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <ErrorBoundary>{children}</ErrorBoundary>
             <Toaster />
-            <Analytics />
           </ThemeProvider>
         </AuthProvider>
       </body>
