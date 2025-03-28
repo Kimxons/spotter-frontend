@@ -208,7 +208,7 @@ export default function TripPlanner() {
                 <Truck className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gradient-premium">ELD Trip Planner Pro</h1>
+                <h1 className="text-3xl font-bold text-gradient-premium">ELD Trip Planner</h1>
                 <p className="text-muted-foreground">Plan routes and generate compliant logs with confidence</p>
               </div>
             </div>
@@ -562,7 +562,7 @@ export default function TripPlanner() {
         >
           <Separator className="mb-4" />
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} ELD Trip Planner Pro. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} ELD Trip Planner. All rights reserved.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-primary transition-colors">
                 Privacy Policy
