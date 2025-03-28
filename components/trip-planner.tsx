@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import TripForm from "@/components/trip-form"
 import LogSheet from "@/components/log-sheet"
 import TripSummary from "@/components/trip-summary"
-import { calculateRoute } from "@/lib/route-calculator"
 import type { TripDetails, RouteResult } from "@/lib/types"
 import { motion } from "framer-motion"
 import {
@@ -21,6 +20,7 @@ import {
   Share2,
   Bookmark,
   RotateCcw,
+  Shield,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/components/ui/use-toast"
@@ -30,8 +30,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import UserMenu from "@/components/auth/user-menu"
-import { useAuth } from "@/lib/ auth-context"
 import RouteMap from "./maps/route-map"
+import { useAuth } from "@/lib/ auth-context"
+import HOSCompliancePanel from "./hos-compliance-panel"
+import { calculateRoute } from "@/lib/route-calculator"
 
 export default function TripPlanner() {
   const [activeTab, setActiveTab] = useState("input")
@@ -87,12 +89,12 @@ export default function TripPlanner() {
     const progressInterval = startProgressSimulation()
 
     try {
-      const result = await calculateRoute(details)
-      setRouteResult(result)
+      const { routeResult } = await calculateRoute(details.origin, details.destination, details.departureTime, details.truckType)
+      setRouteResult(routeResult)
       setActiveTab("map")
       toast({
         title: "Route calculated successfully",
-        description: `${result.totalDistance} miles from ${details.currentLocation} to ${details.dropoffLocation}`,
+        description: `${routeResult.totalDistance} miles from ${details.origin} to ${details.destination}`,
         variant: "default",
       })
     } catch (err) {
@@ -173,6 +175,8 @@ export default function TripPlanner() {
         return <FileText className="h-4 w-4 mr-2" />
       case "summary":
         return <BarChart3 className="h-4 w-4 mr-2" />
+      case "compliance":
+        return <Shield className="h-4 w-4 mr-2" />
       default:
         return null
     }
@@ -233,7 +237,7 @@ export default function TripPlanner() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="glass-effect border-b sticky top-0 z-10">
                 <TabsList className="w-full h-auto p-0 bg-transparent justify-start rounded-none">
-                  {["input", "map", "logs", "summary"].map((tab, index) => (
+                  {["input", "map", "logs", "compliance", "summary"].map((tab, index) => (
                     <TabsTrigger
                       key={tab}
                       value={tab}
@@ -248,7 +252,9 @@ export default function TripPlanner() {
                             ? "Route Map"
                             : tab === "logs"
                               ? "ELD Logs"
-                              : "Trip Summary"}
+                              : tab === "compliance"
+                                ? "HOS Compliance"
+                                : "Trip Summary"}
                       </span>
                     </TabsTrigger>
                   ))}
@@ -368,6 +374,43 @@ export default function TripPlanner() {
                     className="p-6"
                   >
                     <LogSheet routeResult={routeResult} />
+                    <div className="mt-6 flex justify-end">
+                      <Button
+                        onClick={() => setActiveTab("compliance")}
+                        className="group bg-gradient-primary premium-button"
+                      >
+                        View HOS Compliance
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
+                        >
+                          <path d="M5 12h14"></path>
+                          <path d="m12 5 7 7-7 7"></path>
+                        </svg>
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="compliance" className="p-0 m-0">
+                {routeResult && tripDetails && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-6"
+                  >
+                    <HOSCompliancePanel routeResult={routeResult} tripDetails={tripDetails} />
                     <div className="mt-6 flex justify-end">
                       <Button
                         onClick={() => setActiveTab("summary")}

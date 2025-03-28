@@ -1,364 +1,366 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Download, Printer, FileText, Calendar, Clock, MapPin } from "lucide-react"
-import type { RouteResult } from "@/lib/types"
-import { motion } from "framer-motion"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { FileText, Calendar, Clock, Truck, MapPin, ArrowRight, Download } from "lucide-react"
+import type { LogDay, RouteResult } from "@/lib/types"
+import { motion } from "framer-motion"
 
 interface LogSheetProps {
   routeResult: RouteResult
 }
 
 export default function LogSheet({ routeResult }: LogSheetProps) {
-  const [currentLogIndex, setCurrentLogIndex] = useState(0)
-  const currentLog = routeResult.logs[currentLogIndex]
+  const [activeTab, setActiveTab] = useState<string>(routeResult.logs[0]?.date || "")
 
-  const handlePrevious = () => {
-    setCurrentLogIndex((prev) => Math.max(0, prev - 1))
+  // Function to get color based on activity type
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case "driving":
+        return "bg-blue-500 dark:bg-blue-600"
+      case "onDutyNotDriving":
+        return "bg-amber-500 dark:bg-amber-600"
+      case "offDuty":
+        return "bg-green-500 dark:bg-green-600"
+      case "sleeperBerth":
+        return "bg-purple-500 dark:bg-purple-600"
+      default:
+        return "bg-gray-500 dark:bg-gray-600"
+    }
   }
 
-  const handleNext = () => {
-    setCurrentLogIndex((prev) => Math.min(routeResult.logs.length - 1, prev + 1))
+  // Function to get badge variant based on activity type
+  const getActivityBadge = (type: string) => {
+    switch (type) {
+      case "driving":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50">
+            Driving
+          </Badge>
+        )
+      case "onDutyNotDriving":
+        return (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50">
+            On Duty (Not Driving)
+          </Badge>
+        )
+      case "offDuty":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50">
+            Off Duty
+          </Badge>
+        )
+      case "sleeperBerth":
+        return (
+          <Badge className="bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800/50">
+            Sleeper Berth
+          </Badge>
+        )
+      default:
+        return <Badge>Unknown</Badge>
+    }
+  }
+
+  // Function to get icon based on activity type
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case "driving":
+        return <Truck className="h-4 w-4 text-blue-500" />
+      case "onDutyNotDriving":
+        return <Clock className="h-4 w-4 text-amber-500" />
+      case "offDuty":
+        return <Clock className="h-4 w-4 text-green-500" />
+      case "sleeperBerth":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4 text-purple-500"
+          >
+            <path d="M2 4v16" />
+            <path d="M22 4v16" />
+            <path d="M2 8h20" />
+            <path d="M2 16h20" />
+            <path d="M12 4v16" />
+          </svg>
+        )
+      default:
+        return <Clock className="h-4 w-4" />
+    }
+  }
+
+  // Function to render the timeline for a log day
+  const renderTimeline = (log: LogDay) => {
+    const hours = Array.from({ length: 24 }, (_, i) => i)
+    const sortedActivities = [...log.activities].sort(
+      (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime),
+    )
+
+    return (
+      <div className="mt-6">
+        <div className="relative">
+          {/* Hour markers */}
+          <div className="flex justify-between mb-2">
+            {hours.map((hour) => (
+              <div key={hour} className="text-xs text-muted-foreground w-4 text-center">
+                {hour}
+              </div>
+            ))}
+          </div>
+
+          {/* Timeline bar */}
+          <div className="h-8 bg-muted rounded-md relative">
+            {sortedActivities.map((activity, index) => {
+              const startMinutes = parseTimeToMinutes(activity.startTime)
+              const endMinutes = parseTimeToMinutes(activity.endTime)
+
+              // Handle activities that span midnight
+              let startPercent, widthPercent
+
+              if (endMinutes < startMinutes) {
+                // Activity spans midnight - render two segments
+                // First segment: from start to midnight
+                startPercent = (startMinutes / (24 * 60)) * 100
+                widthPercent = ((24 * 60 - startMinutes) / (24 * 60)) * 100
+
+                return (
+                  <>
+                    <div
+                      key={`${index}-1`}
+                      className={`absolute h-full ${getActivityColor(activity.type)} rounded-md`}
+                      style={{
+                        left: `${startPercent}%`,
+                        width: `${widthPercent}%`,
+                      }}
+                      title={`${activity.startTime} - 24:00: ${activity.type}${activity.remarks ? ` - ${activity.remarks}` : ""}`}
+                    ></div>
+                    <div
+                      key={`${index}-2`}
+                      className={`absolute h-full ${getActivityColor(activity.type)} rounded-md`}
+                      style={{
+                        left: "0%",
+                        width: `${(endMinutes / (24 * 60)) * 100}%`,
+                      }}
+                      title={`00:00 - ${activity.endTime}: ${activity.type}${activity.remarks ? ` - ${activity.remarks}` : ""}`}
+                    ></div>
+                  </>
+                )
+              } else {
+                // Normal activity within the same day
+                startPercent = (startMinutes / (24 * 60)) * 100
+                widthPercent = ((endMinutes - startMinutes) / (24 * 60)) * 100
+
+                return (
+                  <div
+                    key={index}
+                    className={`absolute h-full ${getActivityColor(activity.type)} rounded-md`}
+                    style={{
+                      left: `${startPercent}%`,
+                      width: `${widthPercent}%`,
+                    }}
+                    title={`${activity.startTime} - ${activity.endTime}: ${activity.type}${activity.remarks ? ` - ${activity.remarks}` : ""}`}
+                  ></div>
+                )
+              }
+            })}
+          </div>
+
+          {/* Hour grid lines */}
+          <div className="absolute top-0 left-0 w-full h-8 flex pointer-events-none">
+            {hours.map((hour) => (
+              <div
+                key={hour}
+                className="h-full border-l border-muted-foreground/20"
+                style={{ width: `${100 / 24}%` }}
+              ></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Activity legend */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          {Array.from(new Set(log.activities.map((a) => a.type))).map((type) => (
+            <div key={type} className="flex items-center">
+              <div className={`w-3 h-3 rounded-full ${getActivityColor(type)} mr-1`}></div>
+              <span className="text-xs">
+                {type === "onDutyNotDriving"
+                  ? "On Duty (Not Driving)"
+                  : type === "offDuty"
+                    ? "Off Duty"
+                    : type === "sleeperBerth"
+                      ? "Sleeper Berth"
+                      : "Driving"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Function to render the detailed activity list for a log day
+  const renderActivityList = (log: LogDay) => {
+    const sortedActivities = [...log.activities].sort(
+      (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime),
+    )
+
+    return (
+      <div className="mt-6 space-y-4">
+        {sortedActivities.map((activity, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: index * 0.05 }}
+            className="p-3 rounded-lg border hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`p-2 rounded-full ${getActivityColor(activity.type).replace("bg-", "bg-opacity-20 bg-")}`}
+              >
+                {getActivityIcon(activity.type)}
+              </div>
+              <div className="flex-1">
+                <div className="flex flex-wrap justify-between items-start gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      {getActivityBadge(activity.type)}
+                      {activity.location && (
+                        <span className="text-sm text-muted-foreground flex items-center">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {activity.location}
+                        </span>
+                      )}
+                    </div>
+                    {activity.remarks && <p className="text-sm mt-1">{activity.remarks}</p>}
+                  </div>
+                  <div className="flex items-center text-sm font-medium">
+                    <span>{activity.startTime}</span>
+                    <ArrowRight className="h-3 w-3 mx-1" />
+                    <span>{activity.endTime}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    )
+  }
+
+  // Function to parse time string (HH:MM) to minutes since midnight
+  function parseTimeToMinutes(timeStr: string): number {
+    const [hours, minutes] = timeStr.split(":").map(Number)
+    return hours * 60 + minutes
   }
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-      >
-        <div>
-          <h2 className="text-2xl font-bold flex items-center">
-            <FileText className="h-6 w-6 mr-2 text-blue-500" />
-            Driver's Daily Logs
-          </h2>
-          <p className="text-muted-foreground">Electronic logging device (ELD) records for your trip</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1">
-            <Printer className="h-4 w-4 mr-1" />
-            Print
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1">
-            <Download className="h-4 w-4 mr-1" />
-            Download PDF
-          </Button>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="flex items-center justify-between mb-4 bg-muted/50 p-2 rounded-lg"
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handlePrevious}
-          disabled={currentLogIndex === 0}
-          className="h-9 px-2"
-        >
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          Previous Day
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold flex items-center">
+          <FileText className="h-6 w-6 mr-2 text-blue-500" />
+          Driver's Daily Logs
+        </h2>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Download className="h-4 w-4" />
+          Export Logs
         </Button>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50"
-          >
-            <Calendar className="h-3 w-3 mr-1" />
-            {currentLog.date}
-          </Badge>
-          <span className="text-sm font-medium">
-            Log {currentLogIndex + 1} of {routeResult.logs.length}
-          </span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleNext}
-          disabled={currentLogIndex === routeResult.logs.length - 1}
-          className="h-9 px-2"
-        >
-          Next Day
-          <ChevronRight className="h-5 w-5 ml-1" />
-        </Button>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-      >
-        <Card className="border shadow-md overflow-hidden">
-          <CardHeader className="pb-2 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-blue-500" />
-                  Driver's Daily Log
-                </CardTitle>
-                <CardDescription>
-                  {currentLog.date} • {currentLog.totalMiles} miles driven
-                </CardDescription>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">24-Hour Period</p>
-                <p className="text-sm text-muted-foreground">Midnight to Midnight</p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="p-4 border-b">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-5 w-5 text-blue-500 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">From:</p>
-                    <p className="font-medium">{currentLog.startLocation}</p>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full max-w-md mx-auto grid grid-cols-2 p-1 bg-muted/30 rounded-lg">
+          {routeResult.logs.map((log, index) => (
+            <TabsTrigger
+              key={log.date}
+              value={log.date}
+              className="rounded-md data-[state=active]:bg-gradient-to-r from-blue-600 to-blue-700 data-[state=active]:text-white"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Day {index + 1} - {new Date(log.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {routeResult.logs.map((log) => (
+          <TabsContent key={log.date} value={log.date} className="mt-6">
+            <Card className="border shadow-md">
+              <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50">
+                <div className="flex flex-wrap justify-between items-center gap-2">
+                  <CardTitle className="flex items-center">
+                    <Calendar className="h-5 w-5 mr-2 text-blue-500" />
+                    {new Date(log.date).toLocaleDateString(undefined, {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </CardTitle>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50"
+                    >
+                      Driving: {log.totalHours.driving} hrs
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800/50"
+                    >
+                      On Duty: {log.totalHours.onDutyNotDriving} hrs
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50"
+                    >
+                      Off Duty: {log.totalHours.offDuty} hrs
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800/50"
+                    >
+                      Sleeper: {log.totalHours.sleeperBerth} hrs
+                    </Badge>
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-5 w-5 text-red-500 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">To:</p>
-                    <p className="font-medium">{currentLog.endLocation}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="border rounded-lg p-3 bg-blue-50 dark:bg-blue-900/20">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Total Miles Driving Today:</p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-200">{currentLog.totalMiles}</p>
-                </div>
-                <div className="border rounded-lg p-3 bg-blue-50 dark:bg-blue-900/20">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Total Mileage Today:</p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-200">{currentLog.totalMiles}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Name of Carrier or Carriers:</p>
-                  <p>Sample Trucking Company</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Main Office Address:</p>
-                  <p>123 Trucking Lane, Transport City, TC 12345</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Log Grid */}
-            <div className="p-4">
-              <div className="mb-4 border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-24 border-b text-xs bg-muted/30">
-                  {Array.from({ length: 24 }).map((_, i) => (
-                    <div key={i} className="px-1 py-2 text-center border-r last:border-r-0 font-medium">
-                      {i === 0 ? "M" : i === 12 ? "N" : i % 12}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Off Duty Row */}
-                <div className="grid grid-cols-24 border-b">
-                  <div className="col-span-2 px-2 py-1 text-xs font-medium border-r bg-green-50 dark:bg-green-900/20">
-                    Off Duty
-                  </div>
-                  <div className="col-span-22 h-6 relative">
-                    {currentLog.activities
-                      .filter((a) => a.type === "offDuty")
-                      .map((activity, idx) => {
-                        const startHour = Number.parseInt(activity.startTime.split(":")[0])
-                        const startMin = Number.parseInt(activity.startTime.split(":")[1]) / 60
-                        const start = startHour + startMin
-
-                        const endHour = Number.parseInt(activity.endTime.split(":")[0])
-                        const endMin = Number.parseInt(activity.endTime.split(":")[1]) / 60
-                        const end = endHour + endMin
-
-                        const startPercent = (start / 24) * 100
-                        const widthPercent = ((end - start) / 24) * 100
-
-                        return (
-                          <div
-                            key={idx}
-                            className="absolute h-full bg-green-200 border border-green-400 dark:bg-green-700/50 dark:border-green-600"
-                            style={{
-                              left: `${startPercent}%`,
-                              width: `${widthPercent}%`,
-                            }}
-                          />
-                        )
-                      })}
-                  </div>
-                </div>
-
-                {/* Sleeper Berth Row */}
-                <div className="grid grid-cols-24 border-b">
-                  <div className="col-span-2 px-2 py-1 text-xs font-medium border-r bg-blue-50 dark:bg-blue-900/20">
-                    Sleeper Berth
-                  </div>
-                  <div className="col-span-22 h-6 relative">
-                    {currentLog.activities
-                      .filter((a) => a.type === "sleeperBerth")
-                      .map((activity, idx) => {
-                        const startHour = Number.parseInt(activity.startTime.split(":")[0])
-                        const startMin = Number.parseInt(activity.startTime.split(":")[1]) / 60
-                        const start = startHour + startMin
-
-                        const endHour = Number.parseInt(activity.endTime.split(":")[0])
-                        const endMin = Number.parseInt(activity.endTime.split(":")[1]) / 60
-                        const end = endHour + endMin
-
-                        const startPercent = (start / 24) * 100
-                        const widthPercent = ((end - start) / 24) * 100
-
-                        return (
-                          <div
-                            key={idx}
-                            className="absolute h-full bg-blue-200 border border-blue-400 dark:bg-blue-700/50 dark:border-blue-600"
-                            style={{
-                              left: `${startPercent}%`,
-                              width: `${widthPercent}%`,
-                            }}
-                          />
-                        )
-                      })}
-                  </div>
-                </div>
-
-                {/* Driving Row */}
-                <div className="grid grid-cols-24 border-b">
-                  <div className="col-span-2 px-2 py-1 text-xs font-medium border-r bg-amber-50 dark:bg-amber-900/20">
-                    Driving
-                  </div>
-                  <div className="col-span-22 h-6 relative">
-                    {currentLog.activities
-                      .filter((a) => a.type === "driving")
-                      .map((activity, idx) => {
-                        const startHour = Number.parseInt(activity.startTime.split(":")[0])
-                        const startMin = Number.parseInt(activity.startTime.split(":")[1]) / 60
-                        const start = startHour + startMin
-
-                        const endHour = Number.parseInt(activity.endTime.split(":")[0])
-                        const endMin = Number.parseInt(activity.endTime.split(":")[1]) / 60
-                        const end = endHour + endMin
-
-                        const startPercent = (start / 24) * 100
-                        const widthPercent = ((end - start) / 24) * 100
-
-                        return (
-                          <div
-                            key={idx}
-                            className="absolute h-full bg-amber-200 border border-amber-400 dark:bg-amber-700/50 dark:border-amber-600"
-                            style={{
-                              left: `${startPercent}%`,
-                              width: `${widthPercent}%`,
-                            }}
-                          />
-                        )
-                      })}
-                  </div>
-                </div>
-
-                {/* On Duty (Not Driving) Row */}
-                <div className="grid grid-cols-24 border-b">
-                  <div className="col-span-2 px-2 py-1 text-xs font-medium border-r bg-red-50 dark:bg-red-900/20">
-                    On Duty (Not Driving)
-                  </div>
-                  <div className="col-span-22 h-6 relative">
-                    {currentLog.activities
-                      .filter((a) => a.type === "onDutyNotDriving")
-                      .map((activity, idx) => {
-                        const startHour = Number.parseInt(activity.startTime.split(":")[0])
-                        const startMin = Number.parseInt(activity.startTime.split(":")[1]) / 60
-                        const start = startHour + startMin
-
-                        const endHour = Number.parseInt(activity.endTime.split(":")[0])
-                        const endMin = Number.parseInt(activity.endTime.split(":")[1]) / 60
-                        const end = endHour + endMin
-
-                        const startPercent = (start / 24) * 100
-                        const widthPercent = ((end - start) / 24) * 100
-
-                        return (
-                          <div
-                            key={idx}
-                            className="absolute h-full bg-red-200 border border-red-400 dark:bg-red-700/50 dark:border-red-600"
-                            style={{
-                              left: `${startPercent}%`,
-                              width: `${widthPercent}%`,
-                            }}
-                          />
-                        )
-                      })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Remarks Section */}
-              <div className="mb-4">
-                <h3 className="text-sm font-medium mb-2 flex items-center">
-                  <Clock className="h-4 w-4 mr-1 text-blue-500" />
-                  Remarks
-                </h3>
-                <div className="border rounded-lg p-3 min-h-[100px] bg-muted/10">
-                  {currentLog.remarks.map((remark, index) => (
-                    <p key={index} className="text-sm mb-1">
-                      {remark}
-                    </p>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shipping Documents */}
-              <div className="mb-4">
-                <h3 className="text-sm font-medium mb-2 flex items-center">
-                  <FileText className="h-4 w-4 mr-1 text-blue-500" />
-                  Shipping Documents
-                </h3>
-                <div className="border rounded-lg p-3 bg-muted/10">
-                  <p className="text-sm">Shipping Document #: {currentLog.shippingDocuments}</p>
-                </div>
-              </div>
-
-              {/* Totals */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="border rounded-lg p-3 text-center bg-green-50 dark:bg-green-900/20">
-                  <p className="text-xs font-medium text-green-800 dark:text-green-300">Off Duty</p>
-                  <p className="text-xl font-bold text-green-700 dark:text-green-200">
-                    {currentLog.totalHours.offDuty}
-                  </p>
-                </div>
-                <div className="border rounded-lg p-3 text-center bg-blue-50 dark:bg-blue-900/20">
-                  <p className="text-xs font-medium text-blue-800 dark:text-blue-300">Sleeper Berth</p>
-                  <p className="text-xl font-bold text-blue-700 dark:text-blue-200">
-                    {currentLog.totalHours.sleeperBerth}
-                  </p>
-                </div>
-                <div className="border rounded-lg p-3 text-center bg-amber-50 dark:bg-amber-900/20">
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Driving</p>
-                  <p className="text-xl font-bold text-amber-700 dark:text-amber-200">
-                    {currentLog.totalHours.driving}
-                  </p>
-                </div>
-                <div className="border rounded-lg p-3 text-center bg-red-50 dark:bg-red-900/20">
-                  <p className="text-xs font-medium text-red-800 dark:text-red-300">On Duty (Not Driving)</p>
-                  <p className="text-xl font-bold text-red-700 dark:text-red-200">
-                    {currentLog.totalHours.onDutyNotDriving}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <Tabs defaultValue="timeline" className="w-full">
+                  <TabsList className="w-full max-w-xs mx-auto grid grid-cols-2 p-1 bg-muted/30 rounded-lg">
+                    <TabsTrigger
+                      value="timeline"
+                      className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    >
+                      Timeline View
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="list"
+                      className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    >
+                      Activity List
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="timeline" className="mt-4">
+                    {renderTimeline(log)}
+                  </TabsContent>
+                  <TabsContent value="list" className="mt-4">
+                    {renderActivityList(log)}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   )
 }

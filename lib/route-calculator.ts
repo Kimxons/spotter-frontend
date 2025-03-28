@@ -1,325 +1,355 @@
-import type { TripDetails, RouteResult, RouteStop, LogDay, LogActivity } from "./types"
-import { api } from "./api"
+import type { RouteResult, TripDetails, RouteStop, LogDay } from "@/lib/types"
+import { calculateFuelStops, formatDuration, geocodeAddress, getDirections, metersToMiles } from "./mapbox-api";
 
 /**
- * Calculates a route based on trip details by calling the backend API.
- * If the API fails or returns incomplete data, falls back to generating mock data.
- *
- * @param tripDetails - The trip details including current location, pickup location, dropoff location, and cycle hours used
- * @returns A promise that resolves to the route result
+ * Calculate a route between two locations
  */
-export async function calculateRoute(tripDetails: TripDetails): Promise<RouteResult> {
+export async function calculateRoute(
+  origin: string,
+  destination: string,
+  departureTime: Date,
+  truckType: string,
+): Promise<{ routeResult: RouteResult; tripDetails: TripDetails }> {
   try {
-    console.log("Calling API to calculate route with details:", tripDetails)
+    // Geocode origin and destination
+    const originCoords = await geocodeAddress(origin)
+    const destinationCoords = await geocodeAddress(destination)
 
-    // Call the backend API to calculate the route
-    let result: RouteResult
-
-    try {
-      result = await api.calculateRoute(tripDetails)
-      console.log("API returned result:", result)
-
-      // Validate the result to ensure it has all required properties
-      if (!validateRouteResult(result)) {
-        console.warn("API returned incomplete data, falling back to mock data")
-        result = generateMockRouteData(tripDetails)
-      }
-    } catch (error) {
-      console.error("API call failed, falling back to mock data:", error)
-      result = generateMockRouteData(tripDetails)
+    if (!originCoords || !destinationCoords) {
+      throw new Error("Could not geocode one or both locations")
     }
 
-    return result
+    // Get directions from Mapbox
+    const directions = await getDirections(originCoords, destinationCoords)
+
+    if (!directions || !directions.routes || directions.routes.length === 0) {
+      throw new Error("Could not calculate route")
+    }
+
+    // Extract route information
+    const route = directions.routes[0]
+    const distanceInMiles = metersToMiles(route.distance)
+    const durationInHours = route.duration / 3600
+
+    // Calculate number of fuel stops needed
+    const fuelStops = calculateFuelStops(distanceInMiles)
+
+    // Generate stops along the route
+    const stops = generateStops(origin, destination, departureTime, distanceInMiles, durationInHours, fuelStops)
+
+    // Generate log days
+    const logs = generateLogs(stops, departureTime)
+
+    // Calculate arrival time
+    const arrivalTime = new Date(stops[stops.length - 1].departureTime)
+
+    // Create route result
+    const routeResult: RouteResult = {
+      startLocation: origin,
+      endLocation: destination,
+      departureTime: departureTime.toLocaleString(),
+      arrivalTime: arrivalTime.toLocaleString(),
+      totalDistance: Math.round(distanceInMiles),
+      totalDuration: formatDuration(route.duration),
+      stops,
+      logs,
+    }
+
+    // Create trip details
+    const tripDetails: TripDetails = {
+      origin,
+      destination,
+      departureTime,
+      truckType,
+      cycleHoursUsed: 0, // Default to 0, should be provided by user
+      cycleType: "70hour8day", // Default to 70-hour/8-day cycle
+    }
+
+    return { routeResult, tripDetails }
   } catch (error) {
-    console.error("Failed to calculate route:", error)
-
-    // If all else fails, return mock data
-    return generateMockRouteData(tripDetails)
+    console.error("Error calculating route:", error)
+    throw error
   }
 }
 
 /**
- * Validates that a route result contains all required properties
+ * Generate stops along the route
  */
-function validateRouteResult(result: any): result is RouteResult {
-  return (
-    result &&
-    typeof result === "object" &&
-    typeof result.startLocation === "string" &&
-    typeof result.endLocation === "string" &&
-    typeof result.totalDistance === "number" &&
-    typeof result.totalDuration === "string" &&
-    Array.isArray(result.stops) &&
-    Array.isArray(result.logs) &&
-    result.logs.length > 0 &&
-    result.logs.every(
-      (log: any) =>
-        log &&
-        typeof log === "object" &&
-        typeof log.date === "string" &&
-        typeof log.startLocation === "string" &&
-        typeof log.endLocation === "string" &&
-        typeof log.totalMiles === "number" &&
-        Array.isArray(log.activities) &&
-        log.totalHours &&
-        typeof log.totalHours === "object",
-    )
-  )
-}
+function generateStops(
+  origin: string,
+  destination: string,
+  departureTime: Date,
+  distanceInMiles: number,
+  durationInHours: number,
+  fuelStops: number,
+): RouteStop[] {
+  const stops: RouteStop[] = []
+  const currentTime = new Date(departureTime)
 
-/**
- * Generates mock route data as a fallback when the API fails
- */
-function generateMockRouteData(tripDetails: TripDetails): RouteResult {
-  return {
-    startLocation: tripDetails.currentLocation,
-    endLocation: tripDetails.dropoffLocation,
-    totalDistance: 750,
-    totalDuration: "2 days, 3 hours",
-    stops: generateMockStops(tripDetails),
-    logs: generateMockLogs(tripDetails),
-  }
-}
+  // Add starting point
+  stops.push({
+    type: "start",
+    location: origin,
+    description: "Trip start",
+    arrivalTime: currentTime.toLocaleString(),
+    departureTime: currentTime.toLocaleString(),
+  })
 
-/**
- * Generates mock stops for the route
- */
-function generateMockStops(tripDetails: TripDetails): RouteStop[] {
-  const stops: RouteStop[] = [
-    {
-      type: "start",
-      location: tripDetails.currentLocation,
-      description: "Starting location",
-      arrivalTime: "Day 1, 08:00 AM",
-      departureTime: "Day 1, 08:30 AM",
-      duration: "30 min",
-    },
-    {
-      type: "pickup",
-      location: tripDetails.pickupLocation,
-      description: "Cargo pickup",
-      arrivalTime: "Day 1, 10:30 AM",
-      departureTime: "Day 1, 11:30 AM",
-      duration: "1 hour",
-      mileage: 120,
-    },
-    {
-      type: "rest",
-      location: "Rest Area - Highway 70",
-      description: "Required 30-minute break",
-      arrivalTime: "Day 1, 01:30 PM",
-      departureTime: "Day 1, 02:00 PM",
-      duration: "30 min",
-      mileage: 240,
-    },
-    {
+  // Add pickup stop (1 hour after departure)
+  currentTime.setHours(currentTime.getHours() + 1)
+  stops.push({
+    type: "pickup",
+    location: origin,
+    description: "Pickup cargo",
+    arrivalTime: new Date(departureTime).toLocaleString(),
+    departureTime: currentTime.toLocaleString(),
+    duration: "1 hour",
+  })
+
+  // Calculate segment distance
+  const segmentDistance = distanceInMiles / (fuelStops + 1)
+  const segmentDuration = durationInHours / (fuelStops + 1)
+
+  // Add fuel and rest stops
+  let currentDistance = 0
+  for (let i = 0; i < fuelStops; i++) {
+    // Add driving segment
+    currentDistance += segmentDistance
+    currentTime.setHours(currentTime.getHours() + segmentDuration)
+
+    // Add fuel stop (30 minutes)
+    stops.push({
       type: "fuel",
-      location: "Truck Stop - Junction City",
-      description: "Refueling and meal break",
-      arrivalTime: "Day 1, 04:30 PM",
-      departureTime: "Day 1, 05:30 PM",
-      duration: "1 hour",
-      mileage: 380,
-    },
-    {
-      type: "overnight",
-      location: "Truck Stop - Riverside",
-      description: "10-hour rest period",
-      arrivalTime: "Day 1, 08:00 PM",
-      departureTime: "Day 2, 06:00 AM",
-      duration: "10 hours",
-      mileage: 520,
-    },
+      location: `Fuel Stop ${i + 1}`,
+      description: `Refuel at mile ${Math.round(currentDistance)}`,
+      arrivalTime: currentTime.toLocaleString(),
+      departureTime: new Date(currentTime.getTime() + 30 * 60000).toLocaleString(),
+      duration: "30 minutes",
+      mileage: Math.round(currentDistance),
+    })
+    currentTime.setMinutes(currentTime.getMinutes() + 30)
 
-    // Day 2
-    {
-      type: "rest",
-      location: "Rest Area - Highway 40",
-      description: "Required 30-minute break",
-      arrivalTime: "Day 2, 10:00 AM",
-      departureTime: "Day 2, 10:30 AM",
-      duration: "30 min",
-      mileage: 620,
-    },
-    {
-      type: "dropoff",
-      location: tripDetails.dropoffLocation,
-      description: "Final delivery",
-      arrivalTime: "Day 2, 01:30 PM",
-      departureTime: "Day 2, 02:30 PM",
-      duration: "1 hour",
-      mileage: 750,
-    },
-  ]
+    // Add rest stop if needed (based on HOS regulations)
+    if (i % 2 === 1) {
+      stops.push({
+        type: "rest",
+        location: `Rest Stop ${Math.floor(i / 2) + 1}`,
+        description: "Required rest period",
+        arrivalTime: currentTime.toLocaleString(),
+        departureTime: new Date(currentTime.getTime() + 10 * 60 * 60000).toLocaleString(),
+        duration: "10 hours",
+        mileage: Math.round(currentDistance),
+      })
+      currentTime.setHours(currentTime.getHours() + 10)
+    }
+  }
+
+  // Add final driving segment
+  currentTime.setHours(currentTime.getHours() + segmentDuration)
+
+  // Add dropoff (1 hour)
+  stops.push({
+    type: "dropoff",
+    location: destination,
+    description: "Deliver cargo",
+    arrivalTime: currentTime.toLocaleString(),
+    departureTime: new Date(currentTime.getTime() + 60 * 60000).toLocaleString(),
+    duration: "1 hour",
+    mileage: Math.round(distanceInMiles),
+  })
 
   return stops
 }
 
 /**
- * Generates mock logs for the route
+ * Generate log days based on stops
  */
-function generateMockLogs(tripDetails: TripDetails): LogDay[] {
-  // Day 1 Log
-  const day1Activities: LogActivity[] = [
-    {
-      type: "offDuty",
-      startTime: "00:00",
-      endTime: "08:00",
-      location: tripDetails.currentLocation,
-    },
-    {
-      type: "onDutyNotDriving",
-      startTime: "08:00",
-      endTime: "08:30",
-      location: tripDetails.currentLocation,
-      description: "Pre-trip inspection",
-    },
-    {
-      type: "driving",
-      startTime: "08:30",
-      endTime: "10:30",
-      location: "En route to pickup",
-    },
-    {
-      type: "onDutyNotDriving",
-      startTime: "10:30",
-      endTime: "11:30",
-      location: tripDetails.pickupLocation,
-      description: "Loading cargo",
-    },
-    {
-      type: "driving",
-      startTime: "11:30",
-      endTime: "13:30",
-      location: "En route",
-    },
-    {
-      type: "offDuty",
-      startTime: "13:30",
-      endTime: "14:00",
-      location: "Rest Area - Highway 70",
-      description: "Required 30-minute break",
-    },
-    {
-      type: "driving",
-      startTime: "14:00",
-      endTime: "16:30",
-      location: "En route",
-    },
-    {
-      type: "onDutyNotDriving",
-      startTime: "16:30",
-      endTime: "17:30",
-      location: "Truck Stop - Junction City",
-      description: "Refueling",
-    },
-    {
-      type: "driving",
-      startTime: "17:30",
-      endTime: "20:00",
-      location: "En route",
-    },
-    {
-      type: "sleeperBerth",
-      startTime: "20:00",
-      endTime: "24:00",
-      location: "Truck Stop - Riverside",
-    },
-  ]
+function generateLogs(stops: RouteStop[], departureTime: Date): LogDay[] {
+  const logs: LogDay[] = []
+  let currentDate = new Date(departureTime)
+  currentDate.setHours(0, 0, 0, 0)
 
-  // Day 2 Log
-  const day2Activities: LogActivity[] = [
-    {
-      type: "sleeperBerth",
-      startTime: "00:00",
-      endTime: "06:00",
-      location: "Truck Stop - Riverside",
+  let currentLog: LogDay = {
+    date: currentDate.toLocaleDateString(),
+    activities: [],
+    totalHours: {
+      driving: "0",
+      onDutyNotDriving: "0",
+      offDuty: "0",
+      sleeperBerth: "0",
     },
-    {
-      type: "onDutyNotDriving",
-      startTime: "06:00",
-      endTime: "06:30",
-      location: "Truck Stop - Riverside",
-      description: "Pre-trip inspection",
-    },
-    {
-      type: "driving",
-      startTime: "06:30",
-      endTime: "10:00",
-      location: "En route",
-    },
-    {
-      type: "offDuty",
-      startTime: "10:00",
-      endTime: "10:30",
-      location: "Rest Area - Highway 40",
-      description: "Required 30-minute break",
-    },
-    {
-      type: "driving",
-      startTime: "10:30",
-      endTime: "13:30",
-      location: "En route to delivery",
-    },
-    {
-      type: "onDutyNotDriving",
-      startTime: "13:30",
-      endTime: "14:30",
-      location: tripDetails.dropoffLocation,
-      description: "Unloading cargo",
-    },
-    {
-      type: "offDuty",
-      startTime: "14:30",
-      endTime: "24:00",
-      location: tripDetails.dropoffLocation,
-    },
-  ]
+  }
 
-  const logs: LogDay[] = [
-    {
-      date: "04/15/2025",
-      startLocation: tripDetails.currentLocation,
-      endLocation: "Truck Stop - Riverside",
-      totalMiles: 520,
-      shippingDocuments: "BOL-12345",
-      remarks: [
-        "08:00 - Started in " + tripDetails.currentLocation,
-        "10:30 - Arrived at " + tripDetails.pickupLocation + " for pickup",
-        "13:30 - 30-minute break at Rest Area - Highway 70",
-        "16:30 - Fuel stop at Junction City",
-        "20:00 - 10-hour rest period at Riverside Truck Stop",
-      ],
-      activities: day1Activities,
-      totalHours: {
-        offDuty: "8.5",
-        sleeperBerth: "4.0",
-        driving: "8.0",
-        onDutyNotDriving: "3.5",
-      },
-    },
-    {
-      date: "04/16/2025",
-      startLocation: "Truck Stop - Riverside",
-      endLocation: tripDetails.dropoffLocation,
-      totalMiles: 230,
-      shippingDocuments: "BOL-12345",
-      remarks: [
-        "06:00 - Pre-trip inspection at Riverside Truck Stop",
-        "10:00 - 30-minute break at Rest Area - Highway 40",
-        "13:30 - Arrived at " + tripDetails.dropoffLocation + " for delivery",
-        "14:30 - Off duty after delivery completion",
-      ],
-      activities: day2Activities,
-      totalHours: {
-        offDuty: "10.0",
-        sleeperBerth: "6.0",
-        driving: "6.5",
-        onDutyNotDriving: "1.5",
-      },
-    },
-  ]
+  // Process each stop to create activities
+  for (let i = 0; i < stops.length; i++) {
+    const stop = stops[i]
+    const nextStop = stops[i + 1]
+
+    const arrivalTime = new Date(stop.arrivalTime)
+    const departureTime = new Date(stop.departureTime)
+
+    // Check if we need to start a new log day
+    const stopDate = new Date(arrivalTime)
+    stopDate.setHours(0, 0, 0, 0)
+
+    if (stopDate.getTime() !== currentDate.getTime()) {
+      // Save current log and start a new one
+      if (currentLog.activities.length > 0) {
+        logs.push(currentLog)
+      }
+      currentDate = new Date(stopDate)
+      currentLog = {
+        date: currentDate.toLocaleDateString(),
+        activities: [],
+        totalHours: {
+          driving: "0",
+          onDutyNotDriving: "0",
+          offDuty: "0",
+          sleeperBerth: "0",
+        },
+      }
+    }
+
+    // Add activity based on stop type
+    switch (stop.type) {
+      case "start":
+        // No activity for start
+        break
+      case "pickup":
+      case "dropoff":
+        currentLog.activities.push({
+          type: "onDutyNotDriving",
+          startTime: formatTimeForLog(arrivalTime),
+          endTime: formatTimeForLog(departureTime),
+          location: stop.location,
+          remarks: stop.description,
+        })
+        break
+      case "fuel":
+        currentLog.activities.push({
+          type: "onDutyNotDriving",
+          startTime: formatTimeForLog(arrivalTime),
+          endTime: formatTimeForLog(departureTime),
+          location: stop.location,
+          remarks: "Refueling",
+        })
+        break
+      case "rest":
+        currentLog.activities.push({
+          type: "sleeperBerth",
+          startTime: formatTimeForLog(arrivalTime),
+          endTime: formatTimeForLog(departureTime),
+          location: stop.location,
+          remarks: "Rest period",
+        })
+        break
+    }
+
+    // Add driving activity if there's a next stop
+    if (nextStop) {
+      const nextArrivalTime = new Date(nextStop.arrivalTime)
+
+      // Check if driving spans multiple days
+      if (isSameDay(departureTime, nextArrivalTime)) {
+        // Driving within the same day
+        currentLog.activities.push({
+          type: "driving",
+          startTime: formatTimeForLog(departureTime),
+          endTime: formatTimeForLog(nextArrivalTime),
+          remarks: `Driving to ${nextStop.location}`,
+        })
+      } else {
+        // Driving spans multiple days
+        // Add driving until midnight
+        const midnight = new Date(departureTime)
+        midnight.setHours(23, 59, 59, 999)
+
+        currentLog.activities.push({
+          type: "driving",
+          startTime: formatTimeForLog(departureTime),
+          endTime: "23:59",
+          remarks: `Driving to ${nextStop.location}`,
+        })
+
+        // Add driving from midnight to arrival on the next day
+        // This will be handled in the next iteration when we create a new log day
+      }
+    }
+
+    // Calculate total hours for the current log
+    updateTotalHours(currentLog)
+  }
+
+  // Add the last log if it has activities
+  if (currentLog.activities.length > 0) {
+    updateTotalHours(currentLog)
+    logs.push(currentLog)
+  }
 
   return logs
+}
+
+/**
+ * Format time for log entry (HH:MM)
+ */
+function formatTimeForLog(date: Date): string {
+  return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`
+}
+
+/**
+ * Check if two dates are on the same day
+ */
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  )
+}
+
+/**
+ * Update total hours for a log day
+ */
+function updateTotalHours(log: LogDay): void {
+  let drivingMinutes = 0
+  let onDutyNotDrivingMinutes = 0
+  let offDutyMinutes = 0
+  let sleeperBerthMinutes = 0
+
+  log.activities.forEach((activity) => {
+    const startMinutes = timeToMinutes(activity.startTime)
+    const endMinutes = timeToMinutes(activity.endTime)
+    const duration = endMinutes >= startMinutes ? endMinutes - startMinutes : 24 * 60 - startMinutes + endMinutes
+
+    switch (activity.type) {
+      case "driving":
+        drivingMinutes += duration
+        break
+      case "onDutyNotDriving":
+        onDutyNotDrivingMinutes += duration
+        break
+      case "offDuty":
+        offDutyMinutes += duration
+        break
+      case "sleeperBerth":
+        sleeperBerthMinutes += duration
+        break
+    }
+  })
+
+  log.totalHours = {
+    driving: (drivingMinutes / 60).toFixed(1),
+    onDutyNotDriving: (onDutyNotDrivingMinutes / 60).toFixed(1),
+    offDuty: (offDutyMinutes / 60).toFixed(1),
+    sleeperBerth: (sleeperBerthMinutes / 60).toFixed(1),
+  }
+}
+
+/**
+ * Convert time string (HH:MM) to minutes
+ */
+function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(":").map(Number)
+  return hours * 60 + minutes
 }
 

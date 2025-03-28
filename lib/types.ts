@@ -1,23 +1,10 @@
 export interface TripDetails {
-  currentLocation: string
-  pickupLocation: string
-  dropoffLocation: string
+  origin: string
+  destination: string
+  departureTime: Date
+  truckType: string
   cycleHoursUsed: number
-}
-
-export interface RouteResult {
-  id?: string
-  startLocation: string
-  endLocation: string
-  totalDistance: number
-  totalDuration: string
-  stops: RouteStop[]
-  logs: LogDay[]
-  createdAt?: string
-  routeGeometry?: {
-    type: string
-    coordinates: [number, number][]
-  }
+  cycleType: "60hour7day" | "70hour8day"
 }
 
 export interface RouteStop {
@@ -28,32 +15,62 @@ export interface RouteStop {
   departureTime: string
   duration?: string
   mileage?: number
-  coordinates?: [number, number]
-  latitude?: number
-  longitude?: number
+}
+
+export interface LogActivity {
+  type: "driving" | "onDutyNotDriving" | "offDuty" | "sleeperBerth"
+  startTime: string
+  endTime: string
+  location?: string
+  remarks?: string
 }
 
 export interface LogDay {
   date: string
-  startLocation: string
-  endLocation: string
-  totalMiles: number
-  shippingDocuments: string
-  remarks: string[]
   activities: LogActivity[]
   totalHours: {
-    offDuty: string
-    sleeperBerth: string
     driving: string
     onDutyNotDriving: string
+    offDuty: string
+    sleeperBerth: string
   }
 }
 
-export interface LogActivity {
-  type: "offDuty" | "sleeperBerth" | "driving" | "onDutyNotDriving"
-  startTime: string
-  endTime: string
-  location: string
-  description?: string
+export interface RouteResult {
+  startLocation: string
+  endLocation: string
+  departureTime: string
+  arrivalTime: string
+  totalDistance: number
+  totalDuration: string
+  stops: RouteStop[]
+  logs: LogDay[]
+}
+
+export interface HOSViolation {
+  type: "driving" | "window" | "break" | "cycle" | "other"
+  description: string
+  severity: "low" | "medium" | "high"
+  day?: number
+}
+
+export interface HOSComplianceResult {
+  isCompliant: boolean
+  violations: HOSViolation[]
+  warnings: string[]
+  cycleHoursUsed: number
+  cycleHoursRemaining: number
+  drivingHoursRemaining: number
+  dutyWindowRemaining: number
+  totalDrivingHours: number
+  totalOnDutyHours: number
+  sleeperBerthUsage: {
+    used: boolean
+    validPairs: number
+    details: string
+  }
+  cycleHoursUsedPercentage: number
+  drivingHoursUsedPercentage: number
+  dutyWindowUsedPercentage: number
 }
 
