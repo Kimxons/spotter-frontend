@@ -16,11 +16,11 @@ import {
   Timer,
   Truck,
   Bed,
-  Shield,
   AlertOctagon,
   FileText,
   BarChart3,
   Zap,
+  Sparkles,
 } from "lucide-react"
 import type { RouteResult, TripDetails } from "@/lib/types"
 import { calculateHOSCompliance } from "@/lib/hos-calculator"
@@ -58,9 +58,16 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
 
   // Get progress bar colors
   const getProgressColor = (percentage: number) => {
-    if (percentage >= 90) return "bg-red-500"
-    if (percentage >= 75) return "bg-amber-500"
-    return "bg-green-500"
+    if (percentage >= 90) return "bg-red-500 dark:bg-red-600"
+    if (percentage >= 75) return "bg-amber-500 dark:bg-amber-600"
+    return "bg-green-500 dark:bg-green-600"
+  }
+
+  // Get progress bar gradient
+  const getProgressGradient = (percentage: number) => {
+    if (percentage >= 90) return "bg-gradient-to-r from-red-500 to-red-600 dark:from-red-600 dark:to-red-700"
+    if (percentage >= 75) return "bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700"
+    return "bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700"
   }
 
   // Get violation severity badge
@@ -107,8 +114,8 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
     >
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center">
-            <Shield className="h-6 w-6 mr-2 text-blue-500" />
+          <h2 className="text-2xl font-bold text-gradient-premium flex items-center">
+            <Sparkles className="h-6 w-6 mr-2" />
             HOS Compliance Dashboard
           </h2>
           <p className="text-muted-foreground">Detailed analysis of Hours of Service regulations compliance</p>
@@ -137,21 +144,21 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
         <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 p-1 bg-muted/30 rounded-lg">
           <TabsTrigger
             value="summary"
-            className="rounded-md data-[state=active]:bg-gradient-to-r from-blue-600 to-blue-700 data-[state=active]:text-white"
+            className="rounded-md data-[state=active]:bg-gradient-premium data-[state=active]:text-white"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Summary
           </TabsTrigger>
           <TabsTrigger
             value="violations"
-            className="rounded-md data-[state=active]:bg-gradient-to-r from-blue-600 to-blue-700 data-[state=active]:text-white"
+            className="rounded-md data-[state=active]:bg-gradient-premium data-[state=active]:text-white"
           >
             <AlertOctagon className="h-4 w-4 mr-2" />
             Violations
           </TabsTrigger>
           <TabsTrigger
             value="regulations"
-            className="rounded-md data-[state=active]:bg-gradient-to-r from-blue-600 to-blue-700 data-[state=active]:text-white"
+            className="rounded-md data-[state=active]:bg-gradient-premium data-[state=active]:text-white"
           >
             <FileText className="h-4 w-4 mr-2" />
             Regulations
@@ -203,125 +210,150 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50">
-                <CardTitle className="text-lg flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-                  {tripDetails.cycleType === "60hour7day" ? "60-Hour/7-Day Cycle" : "70-Hour/8-Day Cycle"}
-                </CardTitle>
-                <CardDescription>
-                  {tripDetails.cycleType === "60hour7day" ? "7-day rolling period" : "8-day rolling period"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">Previous Hours Used</span>
-                      <span className="font-medium">{tripDetails.cycleHoursUsed} hrs</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">Trip On-Duty Hours</span>
-                      <span className="font-medium">{complianceResult.totalOnDutyHours.toFixed(1)} hrs</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">Cycle Hours Remaining</span>
-                      <span className={getCycleStatusColor() + " font-bold"}>
-                        {complianceResult.cycleHoursRemaining.toFixed(1)} hrs
-                      </span>
-                    </div>
-                  </div>
-                  <Progress
-                    value={Math.min(100, complianceResult.cycleHoursUsedPercentage)}
-                    className={complianceResult.cycleHoursRemaining > 0 ? "h-2" : "h-2 bg-red-100 dark:bg-red-900/30"}
-                    indicatorClassName={getProgressColor(complianceResult.cycleHoursUsedPercentage)}
-                  />
-                  <div className="flex justify-between text-xs">
-                    <span>0 hours</span>
-                    <span>{tripDetails.cycleType === "60hour7day" ? "60 hours" : "70 hours"}</span>
-                  </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="hover-lift"
+            >
+              <Card className="premium-card border shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+                  <CardTitle className="text-lg flex items-center text-white">
+                    <Calendar className="h-5 w-5 mr-2" />
+                    {tripDetails.cycleType === "60hour7day" ? "60-Hour/7-Day Cycle" : "70-Hour/8-Day Cycle"}
+                  </CardTitle>
+                  <CardDescription className="text-blue-100">
+                    {tripDetails.cycleType === "60hour7day" ? "7-day rolling period" : "8-day rolling period"}
+                  </CardDescription>
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Previous Hours Used</span>
+                        <span className="font-medium">{tripDetails.cycleHoursUsed} hrs</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Trip On-Duty Hours</span>
+                        <span className="font-medium">{complianceResult.totalOnDutyHours.toFixed(1)} hrs</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Cycle Hours Remaining</span>
+                        <span className={getCycleStatusColor() + " font-bold"}>
+                          {complianceResult.cycleHoursRemaining.toFixed(1)} hrs
+                        </span>
+                      </div>
+                    </div>
+                    <Progress
+                      value={Math.min(100, complianceResult.cycleHoursUsedPercentage)}
+                      className={
+                        complianceResult.cycleHoursRemaining > 0
+                          ? "h-2 shadow-inner"
+                          : "h-2 bg-red-100 dark:bg-red-900/30 shadow-inner"
+                      }
+                      indicatorClassName={getProgressGradient(complianceResult.cycleHoursUsedPercentage)}
+                    />
+                    <div className="flex justify-between text-xs">
+                      <span>0 hours</span>
+                      <span>{tripDetails.cycleType === "60hour7day" ? "60 hours" : "70 hours"}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="border shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/50">
-                <CardTitle className="text-lg flex items-center">
-                  <Truck className="h-5 w-5 mr-2 text-amber-500" />
-                  11-Hour Driving Limit
-                </CardTitle>
-                <CardDescription>Current day status</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">Driving Hours Used</span>
-                      <span className="font-medium">{complianceResult.totalDrivingHours.toFixed(1)} hrs</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">Driving Hours Remaining</span>
-                      <span className={getDrivingStatusColor() + " font-bold"}>
-                        {complianceResult.drivingHoursRemaining.toFixed(1)} hrs
-                      </span>
-                    </div>
-                  </div>
-                  <Progress
-                    value={Math.min(100, complianceResult.drivingHoursUsedPercentage)}
-                    className="h-2"
-                    indicatorClassName={getProgressColor(complianceResult.drivingHoursUsedPercentage)}
-                  />
-                  <div className="flex justify-between text-xs">
-                    <span>0 hours</span>
-                    <span>11 hours</span>
-                  </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="hover-lift"
+            >
+              <Card className="premium-card border shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-4">
+                  <CardTitle className="text-lg flex items-center text-white">
+                    <Truck className="h-5 w-5 mr-2" />
+                    11-Hour Driving Limit
+                  </CardTitle>
+                  <CardDescription className="text-amber-100">Current day status</CardDescription>
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Driving Hours Used</span>
+                        <span className="font-medium">{complianceResult.totalDrivingHours.toFixed(1)} hrs</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Driving Hours Remaining</span>
+                        <span className={getDrivingStatusColor() + " font-bold"}>
+                          {complianceResult.drivingHoursRemaining.toFixed(1)} hrs
+                        </span>
+                      </div>
+                    </div>
+                    <Progress
+                      value={Math.min(100, complianceResult.drivingHoursUsedPercentage)}
+                      className="h-2 shadow-inner"
+                      indicatorClassName={getProgressGradient(complianceResult.drivingHoursUsedPercentage)}
+                    />
+                    <div className="flex justify-between text-xs">
+                      <span>0 hours</span>
+                      <span>11 hours</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="border shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2 bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/50">
-                <CardTitle className="text-lg flex items-center">
-                  <Timer className="h-5 w-5 mr-2 text-indigo-500" />
-                  14-Hour Duty Window
-                </CardTitle>
-                <CardDescription>Current day status</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">On-Duty Hours Used</span>
-                      <span className="font-medium">
-                        {(
-                          complianceResult.totalDrivingHours +
-                          (complianceResult.totalOnDutyHours - complianceResult.totalDrivingHours)
-                        ).toFixed(1)}{" "}
-                        hrs
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-muted-foreground">Window Remaining</span>
-                      <span className={getWindowStatusColor() + " font-bold"}>
-                        {complianceResult.dutyWindowRemaining.toFixed(1)} hrs
-                      </span>
-                    </div>
-                  </div>
-                  <Progress
-                    value={Math.min(100, complianceResult.dutyWindowUsedPercentage)}
-                    className="h-2"
-                    indicatorClassName={getProgressColor(complianceResult.dutyWindowUsedPercentage)}
-                  />
-                  <div className="flex justify-between text-xs">
-                    <span>0 hours</span>
-                    <span>14 hours</span>
-                  </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+              className="hover-lift"
+            >
+              <Card className="premium-card border shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 p-4">
+                  <CardTitle className="text-lg flex items-center text-white">
+                    <Timer className="h-5 w-5 mr-2" />
+                    14-Hour Duty Window
+                  </CardTitle>
+                  <CardDescription className="text-indigo-100">Current day status</CardDescription>
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">On-Duty Hours Used</span>
+                        <span className="font-medium">
+                          {(
+                            complianceResult.totalDrivingHours +
+                            (complianceResult.totalOnDutyHours - complianceResult.totalDrivingHours)
+                          ).toFixed(1)}{" "}
+                          hrs
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Window Remaining</span>
+                        <span className={getWindowStatusColor() + " font-bold"}>
+                          {complianceResult.dutyWindowRemaining.toFixed(1)} hrs
+                        </span>
+                      </div>
+                    </div>
+                    <Progress
+                      value={Math.min(100, complianceResult.dutyWindowUsedPercentage)}
+                      className="h-2 shadow-inner"
+                      indicatorClassName={getProgressGradient(complianceResult.dutyWindowUsedPercentage)}
+                    />
+                    <div className="flex justify-between text-xs">
+                      <span>0 hours</span>
+                      <span>14 hours</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
 
-          <Card className="mt-6 border shadow-md">
+          <Card className="mt-6 premium-card border shadow-xl">
             <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/50">
               <CardTitle className="flex items-center">
                 <Bed className="h-5 w-5 mr-2 text-purple-500" />
@@ -331,7 +363,12 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
             </CardHeader>
             <CardContent className="pt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="space-y-3"
+                >
                   <h3 className="text-sm font-medium flex items-center">
                     <Clock className="h-4 w-4 mr-1 text-blue-500" />
                     30-Minute Break Requirement
@@ -345,16 +382,21 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                       variant={complianceResult.violations.some((v) => v.type === "break") ? "destructive" : "outline"}
                       className={
                         !complianceResult.violations.some((v) => v.type === "break")
-                          ? "bg-green-100 text-green-800 border-green-300"
+                          ? "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800/50"
                           : ""
                       }
                     >
                       {complianceResult.violations.some((v) => v.type === "break") ? "Break Violation" : "Compliant"}
                     </Badge>
                   </div>
-                </div>
+                </motion.div>
 
-                <div className="space-y-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  className="space-y-3"
+                >
                   <h3 className="text-sm font-medium flex items-center">
                     <Bed className="h-4 w-4 mr-1 text-purple-500" />
                     Sleeper Berth Provision
@@ -364,20 +406,23 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                     consecutive hours in the sleeper berth.
                   </p>
                   <div className="flex items-center mt-2">
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50"
+                    >
                       {complianceResult.sleeperBerthUsage.used
                         ? `${complianceResult.sleeperBerthUsage.validPairs} Valid Pairs`
                         : "Not Used"}
                     </Badge>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="violations" className="mt-6">
-          <Card className="border shadow-md">
+          <Card className="premium-card border shadow-xl">
             <CardHeader className="pb-2 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/50 dark:to-red-900/50">
               <CardTitle className="flex items-center">
                 <AlertOctagon className="h-5 w-5 mr-2 text-red-500" />
@@ -388,10 +433,12 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
             <CardContent className="pt-4">
               {complianceResult.violations.length === 0 && complianceResult.warnings.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8">
-                  <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+                  <div className="bg-green-100 p-4 rounded-full mb-4 dark:bg-green-900/30">
+                    <CheckCircle className="h-12 w-12 text-green-500 dark:text-green-400" />
+                  </div>
                   <h3 className="text-xl font-medium text-green-700 dark:text-green-400">No Violations Found</h3>
-                  <p className="text-muted-foreground text-center mt-2">
-                    This trip plan is fully compliant with all Hours of Service regulations.
+                  <p className="text-muted-foreground text-center mt-2 max-w-md">
+                    This trip plan is fully compliant with all Hours of Service regulations. You're good to go!
                   </p>
                 </div>
               ) : (
@@ -409,7 +456,7 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: index * 0.05 }}
-                            className="p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800/50"
+                            className="p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800/50 premium-card"
                           >
                             <div className="flex items-start">
                               <div className="mr-3 mt-0.5">
@@ -448,7 +495,7 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: index * 0.05 }}
-                            className="p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50"
+                            className="p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 premium-card"
                           >
                             <div className="flex items-start">
                               <div className="mr-3 mt-0.5">
@@ -478,7 +525,7 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
         </TabsContent>
 
         <TabsContent value="regulations" className="mt-6">
-          <Card className="border shadow-md">
+          <Card className="premium-card border shadow-xl">
             <CardHeader className="pb-2 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-950/50 dark:to-slate-900/50">
               <CardTitle className="flex items-center">
                 <FileText className="h-5 w-5 mr-2 text-blue-500" />
@@ -488,14 +535,14 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
             </CardHeader>
             <CardContent className="pt-4">
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="item-1">
-                  <AccordionTrigger className="hover:no-underline">
+                <AccordionItem value="item-1" className="premium-card border mb-2">
+                  <AccordionTrigger className="hover:no-underline px-4">
                     <div className="flex items-center">
                       <Truck className="h-4 w-4 mr-2 text-amber-500" />
                       <span>11-Hour Driving Limit</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2 pl-6">
                       <p className="text-sm text-muted-foreground">
                         You may drive a maximum of 11 hours after 10 consecutive hours off duty.
@@ -507,14 +554,14 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-2">
-                  <AccordionTrigger className="hover:no-underline">
+                <AccordionItem value="item-2" className="premium-card border mb-2">
+                  <AccordionTrigger className="hover:no-underline px-4">
                     <div className="flex items-center">
                       <Timer className="h-4 w-4 mr-2 text-indigo-500" />
                       <span>14-Hour Driving Window</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2 pl-6">
                       <p className="text-sm text-muted-foreground">
                         You may not drive beyond the 14th consecutive hour after coming on duty, following 10
@@ -527,14 +574,14 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-3">
-                  <AccordionTrigger className="hover:no-underline">
+                <AccordionItem value="item-3" className="premium-card border mb-2">
+                  <AccordionTrigger className="hover:no-underline px-4">
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-2 text-blue-500" />
                       <span>30-Minute Break Requirement</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2 pl-6">
                       <p className="text-sm text-muted-foreground">
                         You must take a 30-minute break when you have driven for a period of 8 cumulative hours without
@@ -548,14 +595,14 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-4">
-                  <AccordionTrigger className="hover:no-underline">
+                <AccordionItem value="item-4" className="premium-card border mb-2">
+                  <AccordionTrigger className="hover:no-underline px-4">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-green-500" />
                       <span>60/70-Hour Limit</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2 pl-6">
                       <p className="text-sm text-muted-foreground">
                         You may not drive after 60/70 hours on duty in 7/8 consecutive days. A driver may restart a 7/8
@@ -568,14 +615,14 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-5">
-                  <AccordionTrigger className="hover:no-underline">
+                <AccordionItem value="item-5" className="premium-card border mb-2">
+                  <AccordionTrigger className="hover:no-underline px-4">
                     <div className="flex items-center">
                       <Bed className="h-4 w-4 mr-2 text-purple-500" />
                       <span>Sleeper Berth Provision</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2 pl-6">
                       <p className="text-sm text-muted-foreground">
                         Drivers may split their required 10-hour off-duty period, as long as one off-duty period
@@ -591,14 +638,14 @@ export default function HOSCompliancePanel({ routeResult, tripDetails }: HOSComp
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="item-6">
-                  <AccordionTrigger className="hover:no-underline">
+                <AccordionItem value="item-6" className="premium-card border">
+                  <AccordionTrigger className="hover:no-underline px-4">
                     <div className="flex items-center">
                       <Zap className="h-4 w-4 mr-2 text-amber-500" />
                       <span>Adverse Driving Conditions</span>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
+                  <AccordionContent className="px-4 pb-4">
                     <div className="space-y-2 pl-6">
                       <p className="text-sm text-muted-foreground">
                         Drivers are allowed to extend the 11-hour maximum driving limit and 14-hour driving window by up

@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
+    --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -28,12 +28,6 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --success: 142.1 76.2% 36.3%;
-    --success-foreground: 355.7 100% 97.3%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 48 96% 89%;
-
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
@@ -51,8 +45,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217.2 91.2% 54.1%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -66,12 +60,6 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 144.9 80.4% 10%;
-
-    --warning: 48 96% 89%;
-    --warning-foreground: 38 92% 50%;
-
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
@@ -82,113 +70,154 @@
   * {
     @apply border-border;
   }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
 
-  html {
-    @apply antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+/* Premium gradients */
+.bg-gradient-premium {
+  @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600;
+}
+
+.text-gradient-premium {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400;
+}
+
+.bg-gradient-primary {
+  @apply bg-gradient-to-r from-blue-600 to-blue-700;
+}
+
+.bg-gradient-secondary {
+  @apply bg-gradient-to-r from-amber-500 to-amber-600;
+}
+
+.bg-gradient-success {
+  @apply bg-gradient-to-r from-green-500 to-green-600;
+}
+
+.bg-gradient-subtle {
+  @apply bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-950/50 dark:to-slate-900/50;
+}
+
+/* Premium shadows */
+.shadow-glow {
+  @apply shadow-[0_0_15px_rgba(79,70,229,0.45)];
+}
+
+.shadow-glow-sm {
+  @apply shadow-[0_0_10px_rgba(79,70,229,0.25)];
+}
+
+/* Premium badges */
+.badge-premium {
+  @apply flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-slate-100 to-blue-50 text-slate-800 border border-slate-200 shadow-sm dark:from-slate-800 dark:to-blue-900/30 dark:text-slate-300 dark:border-slate-700;
+}
+
+/* Premium inputs */
+.premium-input {
+  @apply border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 rounded-md;
+}
+
+/* Premium dropdowns */
+.premium-dropdown {
+  @apply bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg;
+}
+
+.premium-tooltip {
+  @apply bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-lg;
+}
+
+/* Hover lift effect */
+.hover-lift {
+  @apply transition-transform duration-300;
+}
+
+.hover-lift:hover {
+  @apply transform -translate-y-1;
+}
+
+/* Premium card styling */
+.premium-card {
+  @apply border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-lg;
+}
+
+/* Premium button styling */
+.premium-button {
+  @apply transition-all duration-300 hover:shadow-md;
+}
+
+/* Glass effect */
+.glass-effect {
+  @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm;
+}
+
+/* Map styling */
+.mapboxgl-popup-content {
+  @apply p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700;
+}
+
+.custom-marker {
+  @apply shadow-md border-2 border-white;
+}
+
+/* Timeline styling */
+.timeline-marker {
+  @apply absolute h-full w-px bg-muted-foreground/30;
+}
+
+/* Traditional Log Sheet Styling */
+.traditional-log-sheet {
+  @apply print:text-black print:bg-white;
+}
+
+.traditional-log-sheet .grid-cols-24 {
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+}
+
+.traditional-log-sheet .grid-cols-24 > div {
+  min-width: 20px;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(79, 70, 229, 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    background: white;
+    color: black;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-medium tracking-tight;
-  }
-}
-
-@layer components {
-  .glass-effect {
-    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-md backdrop-saturate-150;
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
   }
 
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400;
-  }
-
-  .bg-gradient-primary {
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500;
-  }
-
-  .bg-gradient-secondary {
-    @apply bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-400 dark:to-orange-400;
-  }
-
-  .bg-gradient-success {
-    @apply bg-gradient-to-r from-emerald-500 to-green-500 dark:from-emerald-400 dark:to-green-400;
-  }
-
-  .bg-gradient-subtle {
-    @apply bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30;
-  }
-
-  .premium-card {
-    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
-  }
-
-  .premium-input {
-    @apply border-slate-200 dark:border-slate-700 rounded-md shadow-sm focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 transition-all duration-200;
-  }
-
-  .premium-button {
-    @apply rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200 transform hover:-translate-y-0.5;
-  }
-
-  .premium-icon-container {
-    @apply rounded-full p-2 flex items-center justify-center shadow-sm;
-  }
-
-  .premium-section {
-    @apply rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden;
-  }
-}
-
-@layer utilities {
-  .animate-in {
-    animation: animateIn 0.3s ease-in-out;
-  }
-
-  .animate-pulse-subtle {
-    animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .hover-lift {
-    @apply transition-transform duration-200 hover:-translate-y-1;
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-200 hover:scale-105;
-  }
-
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  @keyframes animateIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes pulseSlow {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.8;
-    }
+  .traditional-log-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
   }
 }
 
