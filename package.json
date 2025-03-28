@@ -50,7 +50,7 @@
     "lucide-react": "^0.454.0",
     "mapbox": "^1.0.0-beta10",
     "mapbox-gl": "^2.15.0",
-    "next": "15.1.0",
+    "next": "^15.3.0-canary.24",
     "next-themes": "latest",
     "react": "^19",
     "react-day-picker": "8.10.1",

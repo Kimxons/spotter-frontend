@@ -22,7 +22,7 @@ import {
 import type { RouteResult, RouteStop } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-mapboxgl.accessToken = process.env.MAPBOX_TOKEN as string;
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN as string;
 
 interface RouteMapViewProps {
   routeResult: RouteResult

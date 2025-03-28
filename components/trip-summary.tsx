@@ -25,7 +25,7 @@ interface TripSummaryProps {
 }
 
 export default function TripSummary({ routeResult, tripDetails }: TripSummaryProps) {
-  // Calculate remaining cycle hours
+  // Calculating the remaining cycle hours
   const totalDrivingHours = routeResult.logs.reduce(
     (total, log) => total + Number.parseFloat(log.totalHours.driving),
     0,
@@ -290,4 +290,3 @@ export default function TripSummary({ routeResult, tripDetails }: TripSummaryPro
     </div>
   )
 }
-
